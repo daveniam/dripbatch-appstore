@@ -23,7 +23,8 @@ export default function Login({ onLogin }) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm space-y-4">
-        <img src="/Logo.png" alt="DripBatch AppStore" className="h-16 w-auto mx-auto" />
+        <img src="/Logo.png" alt="DripBatch AppStore" className="h-16 w-auto mx-auto block dark:hidden" />
+        <img src="/Logo2.png" alt="DripBatch AppStore" className="h-16 w-auto mx-auto hidden dark:block" />
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contraseña</label>
           <input
