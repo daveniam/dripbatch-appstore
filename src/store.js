@@ -1,23 +1,48 @@
 const defaultData = { paquetes: [], prendas: [], compradores: [] };
 
+export function getToken() {
+  return localStorage.getItem('token') || '';
+}
+
+export function setToken(token) {
+  if (token) localStorage.setItem('token', token);
+  else localStorage.removeItem('token');
+}
+
+export function authHeaders(extra = {}) {
+  const token = getToken();
+  return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
+}
+
+export async function login(password) {
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) throw new Error('Contraseña incorrecta');
+  const { token } = await res.json();
+  setToken(token);
+}
+
 export async function loadData() {
-  try {
-    const res = await fetch('/api/data');
-    if (!res.ok) throw new Error('no response');
-    const d = await res.json();
-    // migración: si data.json no tiene compradores aún, agregarlo
-    if (!d.compradores) d.compradores = [];
-    return d;
-  } catch {
-    return defaultData;
+  const res = await fetch('/api/data', { headers: authHeaders() });
+  if (res.status === 401) {
+    setToken(null);
+    throw new Error('unauthorized');
   }
+  if (!res.ok) throw new Error('no response');
+  const d = await res.json();
+  // migración: si data.json no tiene compradores aún, agregarlo
+  if (!d.compradores) d.compradores = [];
+  return d;
 }
 
 export async function saveData(data) {
   try {
     await fetch('/api/data', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
   } catch (err) {

@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
-import { loadData, saveData } from './store';
+import { loadData, saveData, getToken, setToken } from './store';
 import Dashboard from './components/Dashboard';
 import Paquetes from './components/Paquetes';
 import Prendas from './components/Prendas';
 import Compradores from './components/Compradores';
+import Login from './components/Login';
 import './index.css';
 
 const TABS = [
@@ -17,14 +18,24 @@ export default function App() {
   const [tab, setTab] = useState('dashboard');
   const [data, setData] = useState({ paquetes: [], prendas: [], compradores: [] });
   const [cargando, setCargando] = useState(true);
+  const [autenticado, setAutenticado] = useState(true);
   const [oscuro, setOscuro] = useState(() => localStorage.getItem('tema') === 'oscuro');
 
-  useEffect(() => {
+  const cargar = useCallback(() => {
+    setCargando(true);
     loadData().then(d => {
       setData(d);
+      setAutenticado(true);
+      setCargando(false);
+    }).catch(() => {
+      setAutenticado(false);
       setCargando(false);
     });
   }, []);
+
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
 
   useEffect(() => {
     if (oscuro) {
@@ -54,6 +65,10 @@ export default function App() {
     );
   }
 
+  if (!autenticado) {
+    return <Login onLogin={cargar} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
@@ -61,13 +76,24 @@ export default function App() {
           {/* Fila 1: logo + toggle */}
           <div className="flex items-center justify-between">
             <img src={oscuro ? '/Logo2.png' : '/Logo.png'} alt="DripBatch AppStore" className="h-12 md:h-[73px] w-auto" />
-            <button
-              onClick={() => setOscuro(o => !o)}
-              title={oscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-              className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-lg"
-            >
-              {oscuro ? '☀️' : '🌙'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setOscuro(o => !o)}
+                title={oscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-lg"
+              >
+                {oscuro ? '☀️' : '🌙'}
+              </button>
+              {getToken() && (
+                <button
+                  onClick={() => { setToken(null); setAutenticado(false); }}
+                  title="Cerrar sesión"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-lg"
+                >
+                  🚪
+                </button>
+              )}
+            </div>
           </div>
           {/* Fila 2: nav a ancho completo */}
           <nav className="flex mt-2 bg-gray-100 dark:bg-gray-700/50 rounded-lg p-1 gap-1">

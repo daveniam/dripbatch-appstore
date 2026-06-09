@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import crypto from 'crypto';
 import dns from 'dns';
 dns.setServers(['8.8.8.8', '1.1.1.1']);
 import { MongoClient } from 'mongodb';
@@ -141,10 +142,31 @@ async function migrarFotosLocal() {
   }
 }
 
+// ── Autenticación ─────────────────────────────────────────────────────────────
+const APP_PASSWORD = process.env.APP_PASSWORD;
+function tokenValido() {
+  return crypto.createHash('sha256').update(APP_PASSWORD).digest('hex');
+}
+function requireAuth(req, res, next) {
+  if (!APP_PASSWORD) return next(); // sin contraseña configurada, acceso libre
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (token !== tokenValido()) return res.status(401).json({ error: 'No autorizado' });
+  next();
+}
+
 // ── Express ───────────────────────────────────────────────────────────────────
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
+
+// ── POST /api/login ────────────────────────────────────────────────────────────
+app.post('/api/login', (req, res) => {
+  if (!APP_PASSWORD) return res.json({ token: null });
+  const { password } = req.body || {};
+  if (password !== APP_PASSWORD) return res.status(401).json({ error: 'Contraseña incorrecta' });
+  res.json({ token: tokenValido() });
+});
 
 // Servir frontend en producción (Render sirve el build de Vite)
 import { resolve } from 'path';
@@ -155,7 +177,7 @@ if (existsSync(DIST)) {
 }
 
 // ── GET /api/foto/:fotoId — compatibilidad local ──────────────────────────────
-app.get('/api/foto/:fotoId', (req, res) => {
+app.get('/api/foto/:fotoId', requireAuth, (req, res) => {
   if (MODO_NUBE) return res.status(404).json({ error: 'Fotos servidas desde Cloudinary' });
   const fotoId = req.params.fotoId.replace(/[^a-zA-Z0-9_\-]/g, '');
   const archivo = join(FOTOS_DIR, `${fotoId}.jpg`);
@@ -166,7 +188,7 @@ app.get('/api/foto/:fotoId', (req, res) => {
 });
 
 // ── POST /api/foto — subir foto ───────────────────────────────────────────────
-app.post('/api/foto', express.json({ limit: '3mb' }), async (req, res) => {
+app.post('/api/foto', requireAuth, express.json({ limit: '3mb' }), async (req, res) => {
   try {
     const { fotoId, base64 } = req.body;
     if (!fotoId || !base64) return res.status(400).json({ error: 'fotoId y base64 requeridos' });
@@ -179,7 +201,7 @@ app.post('/api/foto', express.json({ limit: '3mb' }), async (req, res) => {
 });
 
 // ── GET /api/data ─────────────────────────────────────────────────────────────
-app.get('/api/data', async (req, res) => {
+app.get('/api/data', requireAuth, async (req, res) => {
   try {
     const data = await readData();
     res.json(data);
@@ -189,7 +211,7 @@ app.get('/api/data', async (req, res) => {
 });
 
 // ── POST /api/data ────────────────────────────────────────────────────────────
-app.post('/api/data', async (req, res) => {
+app.post('/api/data', requireAuth, async (req, res) => {
   try {
     await saveData(req.body);
     res.json({ ok: true });

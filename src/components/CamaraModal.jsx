@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { authHeaders } from '../store';
 
 const THUMB_SIZE = 200;
 
@@ -20,7 +21,7 @@ async function subirFoto(base64) {
   const fotoId = `foto_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
   const res = await fetch('/api/foto', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ fotoId, base64 }),
   });
   if (!res.ok) throw new Error('Error al subir la foto');
