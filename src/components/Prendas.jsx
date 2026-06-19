@@ -143,7 +143,6 @@ export default function Prendas({ data, update }) {
     setMontoVentaTxt(pr.precioVenta.toFixed(2));
     setEditId(pr.id);
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function handleDelete(id) {
@@ -285,7 +284,8 @@ export default function Prendas({ data, update }) {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl p-6 space-y-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto my-8">
           <h3 className="font-medium text-gray-700 dark:text-gray-200">{editId !== null ? 'Editar prenda' : 'Registrar prenda'}</h3>
 
           {/* Foto */}
@@ -457,6 +457,7 @@ export default function Prendas({ data, update }) {
             </button>
           </div>
         </form>
+        </div>
       )}
 
       {/* Filtros */}
