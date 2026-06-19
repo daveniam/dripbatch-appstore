@@ -48,11 +48,42 @@ export default function Prendas({ data, update }) {
   const [reservaModal, setReservaModal] = useState(null);
   const [reservaForm, setReservaForm] = useState({ nombre: '', telefono: '', direccion: '', nota: '', fechaReserva: new Date().toISOString().slice(0, 10) });
   const [showCamara, setShowCamara] = useState(false);
+  const [montoPisoTxt, setMontoPisoTxt] = useState('');
+  const [montoVentaTxt, setMontoVentaTxt] = useState('');
 
   const paqueteSeleccionado = data.paquetes.find(p => p.id === parseInt(form.paqueteId));
   const costoBase = paqueteSeleccionado?.costoPorPrenda ?? 0;
   const precioPiso = costoBase ? calcPrecioPiso(costoBase, parseFloat(form.pctPiso) || 0) : 0;
   const precioVenta = costoBase ? calcPrecioVenta(costoBase, parseFloat(form.pctVenta) || 0) : 0;
+
+  function handlePaqueteChange(nuevoId) {
+    setForm(f => ({ ...f, paqueteId: nuevoId }));
+    const pq = data.paquetes.find(p => p.id === parseInt(nuevoId));
+    const cb = pq?.costoPorPrenda ?? 0;
+    if (cb) {
+      setMontoPisoTxt((cb * (1 + (parseFloat(form.pctPiso) || 0) / 100)).toFixed(2));
+      setMontoVentaTxt((cb * (1 + (parseFloat(form.pctVenta) || 0) / 100)).toFixed(2));
+    } else {
+      setMontoPisoTxt('');
+      setMontoVentaTxt('');
+    }
+  }
+
+  function handleMontoPisoChange(valor) {
+    setMontoPisoTxt(valor);
+    const num = parseFloat(valor);
+    if (costoBase && !isNaN(num)) {
+      setForm(f => ({ ...f, pctPiso: (((num - costoBase) / costoBase) * 100).toFixed(4) }));
+    }
+  }
+
+  function handleMontoVentaChange(valor) {
+    setMontoVentaTxt(valor);
+    const num = parseFloat(valor);
+    if (costoBase && !isNaN(num)) {
+      setForm(f => ({ ...f, pctVenta: (((num - costoBase) / costoBase) * 100).toFixed(4) }));
+    }
+  }
 
   const marcas = [...new Set(data.prendas.map(p => p.marca))].sort();
 
@@ -108,6 +139,8 @@ export default function Prendas({ data, update }) {
       fechaEntrada: pr.fechaEntrada,
       foto: pr.foto || null,
     });
+    setMontoPisoTxt(pr.precioPiso.toFixed(2));
+    setMontoVentaTxt(pr.precioVenta.toFixed(2));
     setEditId(pr.id);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -236,7 +269,7 @@ export default function Prendas({ data, update }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Prendas</h2>
         <button
-          onClick={() => { setShowForm(!showForm); setEditId(null); setForm(emptyForm); }}
+          onClick={() => { setShowForm(!showForm); setEditId(null); setForm(emptyForm); setMontoPisoTxt(''); setMontoVentaTxt(''); }}
           className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700"
           disabled={data.paquetes.length === 0}
           title={data.paquetes.length === 0 ? 'Primero registrá un paquete' : ''}
@@ -288,7 +321,7 @@ export default function Prendas({ data, update }) {
               <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Paquete de origen</label>
               <select
                 value={form.paqueteId}
-                onChange={e => setForm(f => ({ ...f, paqueteId: e.target.value }))}
+                onChange={e => handlePaqueteChange(e.target.value)}
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-400"
                 required
               >
@@ -361,26 +394,34 @@ export default function Prendas({ data, update }) {
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">% Margen piso (mínimo)</label>
+              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                Precio piso ($)
+                {costoBase > 0 && <span className="text-orange-500 font-medium ml-1">— {(parseFloat(form.pctPiso) || 0).toFixed(0)}% margen</span>}
+              </label>
               <input
                 type="number"
                 min="0"
-                step="1"
-                value={form.pctPiso}
-                onChange={e => setForm(f => ({ ...f, pctPiso: e.target.value }))}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                step="0.01"
+                disabled={!costoBase}
+                value={montoPisoTxt}
+                onChange={e => handleMontoPisoChange(e.target.value)}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-400 disabled:opacity-50"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">% Margen venta (óptimo)</label>
+              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                Precio venta ($)
+                {costoBase > 0 && <span className="text-green-600 font-medium ml-1">— {(parseFloat(form.pctVenta) || 0).toFixed(0)}% margen</span>}
+              </label>
               <input
                 type="number"
                 min="0"
-                step="1"
-                value={form.pctVenta}
-                onChange={e => setForm(f => ({ ...f, pctVenta: e.target.value }))}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                step="0.01"
+                disabled={!costoBase}
+                value={montoVentaTxt}
+                onChange={e => handleMontoVentaChange(e.target.value)}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-400 disabled:opacity-50"
                 required
               />
             </div>
@@ -409,7 +450,7 @@ export default function Prendas({ data, update }) {
             </button>
             <button
               type="button"
-              onClick={() => { setShowForm(false); setEditId(null); setForm(emptyForm); }}
+              onClick={() => { setShowForm(false); setEditId(null); setForm(emptyForm); setMontoPisoTxt(''); setMontoVentaTxt(''); }}
               className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm"
             >
               Cancelar
